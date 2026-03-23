@@ -3,6 +3,7 @@ name: DevSecOps Pipeline
 on:
   push:
     branches: [ "main" ]
+  pull_request:
 
 jobs:
   test:
@@ -15,33 +16,49 @@ jobs:
       with:
         python-version: '3.10'
 
-    - run: pip install -r requirements.txt
+    - name: Install dependencies
+      run: pip install -r requirements.txt
 
-    - run: pytest
+    - name: Run pytest
+      run: pytest
 
-    # SAST
+    # -------------------------
+    # SAST avec Bandit
+    # -------------------------
     - name: Install Bandit
-      run: pip install bandit
+      run: pip install bandit jq
 
-    - name: Run Bandit (SAST)
-      run: bandit -r .
+    - name: Run Bandit (secure scan)
+      run: |
+        bandit -r . -ll -f json -o bandit-report.json
+        MEDIUM=$(jq '[.results[] | select(.issue_severity=="MEDIUM" or .issue_severity=="HIGH")] | length' bandit-report.json)
+        if [ "$MEDIUM" -gt 0 ]; then
+          echo "⚠️ Bandit found $MEDIUM Medium/High issues."
+          exit 1
+        else
+          echo "✅ No Medium/High issues found by Bandit."
+        fi
 
-    # Secrets
+    # -------------------------
+    # Secrets avec Gitleaks
+    # -------------------------
     - name: Run Gitleaks
       uses: zricethezav/gitleaks-action@v2
 
+    # -------------------------
     # Docker build
+    # -------------------------
     - name: Build Docker image
       run: docker build -t devsecops-app .
 
-    # Scan Docker
+    # -------------------------
+    # Scan Docker avec Trivy
+    # -------------------------
     - name: Scan Docker image
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: 'devsecops-app'
+        format: 'table'
+        exit-code: 1  # Fails the job if vulnerabilities High or Critical are found
 
-    - name: Scan Docker image
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'devsecops-app'
 
