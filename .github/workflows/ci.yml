@@ -6,29 +6,43 @@ on:
   pull_request:
 
 jobs:
-  test:
+  devsecops:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    # -------------------------
+    # 1️⃣ Checkout code
+    # -------------------------
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-python@v4
+    # -------------------------
+    # 2️⃣ Setup Python
+    # -------------------------
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+    # -------------------------
+    # 3️⃣ Install dependencies
+    # -------------------------
+    - name: Install Python dependencies
+      run: pip install --no-cache-dir -r requirements.txt
 
+    # -------------------------
+    # 4️⃣ Run tests with pytest
+    # -------------------------
     - name: Run pytest
       run: pytest
 
     # -------------------------
-    # SAST avec Bandit
+    # 5️⃣ SAST scan with Bandit
     # -------------------------
     - name: Install Bandit
       run: pip install bandit jq
 
-    - name: Run Bandit (secure scan)
+    - name: Run Bandit
       run: |
         bandit -r . -ll -f json -o bandit-report.json
         MEDIUM=$(jq '[.results[] | select(.issue_severity=="MEDIUM" or .issue_severity=="HIGH")] | length' bandit-report.json)
@@ -40,25 +54,23 @@ jobs:
         fi
 
     # -------------------------
-    # Secrets avec Gitleaks
+    # 6️⃣ Secret scanning with Gitleaks
     # -------------------------
     - name: Run Gitleaks
       uses: zricethezav/gitleaks-action@v2
 
     # -------------------------
-    # Docker build
+    # 7️⃣ Build Docker image
     # -------------------------
     - name: Build Docker image
       run: docker build -t devsecops-app .
 
     # -------------------------
-    # Scan Docker avec Trivy
+    # 8️⃣ Scan Docker image with Trivy
     # -------------------------
     - name: Scan Docker image
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: 'devsecops-app'
         format: 'table'
-        exit-code: 1  # Fails the job if vulnerabilities High or Critical are found
-
-
+        exit-code: 1  # Fails job only on High/Critical vulnerabilities
