@@ -17,3 +17,13 @@ jobs:
 
     - run: pip install -r requirements.txt
     - run: pytest
+    - name: Install Bandit
+      run: pip install bandit
+
+    - name: Run Bandit (SAST)
+      run: bandit -r .
+
+    - name: Run Gitleaks
+      uses: zricethezav/gitleaks-action@v2
+    - name: Run Gitleaks
+      uses: zricethezav/gitleaks-action@v2
