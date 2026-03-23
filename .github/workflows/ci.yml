@@ -27,3 +27,12 @@ jobs:
       uses: zricethezav/gitleaks-action@v2
     - name: Run Gitleaks
       uses: zricethezav/gitleaks-action@v2
+          - name: Build Docker image
+      run: docker build -t devsecops-app .
+    - name: Build Docker image
+      run: docker build -t devsecops-app .
+    - name: Scan Docker image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'devsecops-app'
+
